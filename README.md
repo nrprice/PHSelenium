@@ -1,4 +1,4 @@
-# PearsonHamSelenium
+# PHselenium
  Example of work with Selenium. Collects employee bio information into JSON format. 
  
  # Current issues
