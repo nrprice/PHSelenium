@@ -4,6 +4,7 @@ from selenium.webdriver.chrome.options import Options
 import json
 import os
 import pandas as pd
+
 cwd = os.getcwd()
 # Allows easy option to display / hide the browser window
 display_brower_window = False
@@ -28,6 +29,10 @@ browser.find_element_by_xpath('//*[@id="menu-item-52"]/a').click()
 
 # Instantiate empty employee dictionary
 employee_dict = {}
+# Used to store qualification titles for later use
+qualification_list = [('(', ''), (')', ""), ('BENG', '')]
+
+# Creates unique index number
 id_num = 1
 # Finds information about each individual team member
 team_detail = browser.find_elements_by_class_name('team_detail')
@@ -45,6 +50,7 @@ for team_member in team_detail:
     # Handles edge case where a team member does not have a qualification named.
     if len (details) > 1:
         qualification = details[1].strip()
+        qualification_list.append((qualification.strip().upper() + " ", ''))
     else:
         qualification = 'None Found'
 
@@ -67,33 +73,8 @@ for team_member in team_detail:
         background = ['None Found']
         education = ['None Found']
 
-    # Handles edge cases where incoming data was not formatted the same
-    # Makes a best attempt to ascertain information regardless
-    try:
-        university = education[1]
 
-        # Initially tried the same idea with finding the subject studied.
-        # This currently does not work due to the differing formats of the data.
-
-        # subject = education[0]
-    except IndexError:
-        university = education[0]
-        # subject = 'None Found'
-
-    # Handles edge case where universities where entered alongside the qualifcation obtained
-    university = university.split(',')[-1].title()
-    for r in (
-              ('Beng', ''),
-              ('Msc', ''),
-              ('Bsc', ''),
-              ('Mba', ''),
-              ('(', ''),
-              (')', '')
-    ):
-        university = university.replace(*r).strip()
-        # subject = subject.replace(*r).strip()
-
-    # Appends each employee and their information
+    # Updates dictionary with each employee and their information
     employee_dict.update({id_num:
                               {'name': name,
                                'qualification': qualification,
@@ -101,18 +82,41 @@ for team_member in team_detail:
                                'background': background,
                                'prior_companies_worked': len(background),
                                'full_education': education,
-                               'first_university': university,}
+                               'universities': []}
                           })
     # Inrements to ensure ID num is always unique
     id_num += 1
-
+# Closes browser instance
 browser.quit()
+
+# Loops through every employee entry
+# And their full education key, replaces any qualification title (MBA, MSC) with an empty string
+# Most entries are formatted subject, university so [-1] returns the university
+# There are some (<5) where this is not true
+for employee in employee_dict.items():
+    # print (employee)
+    for item in employee[1]['full_education']:
+        for qual in qualification_list:
+            item = item.upper()
+            item = item.replace(*qual).strip()
+        university_attended = item.split(',')[-1].strip().title()
+        employee[1]['universities'].append(university_attended)
+
+# Need to modify this to use regex to remove the qualification titles. .replace('BA') Changes 'of Bath' to 'of th'.
+
+
+print (employee_dict)
 
 save_JSON = True
 if save_JSON:
     # Save scraped information to JSON
     with open ('pearsonham.txt', 'w') as file:
         json.dump(employee_dict, file)
+
+
+for qualification in qualification_list:
+    file = open('qualifications.txt', 'a')
+    file.write(f'{qualification[0]},')
 
 """
 The JSON file can easily be read by pandas by specifying orient='index' with pd.read_json()
